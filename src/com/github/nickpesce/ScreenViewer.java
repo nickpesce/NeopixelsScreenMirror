@@ -17,6 +17,7 @@ public class ScreenViewer{
 	public static void main(String[] args)
 	{
 		ScreenViewer sv = new ScreenViewer();
+		sv.start();
 	}
 	
 	/**
@@ -33,16 +34,6 @@ public class ScreenViewer{
 		} catch (AWTException e) {
 			e.printStackTrace();
 		}
-		while(running)
-		{
-			update();
-			try {
-				Thread.sleep(50);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-		sender.close();
 	}
 	
 	/**
@@ -73,6 +64,38 @@ public class ScreenViewer{
 		    greenBucket = 0;
 		}
 		sender.sendPixels(leds);
+	}
+	
+	/**
+	 * Starts the thread that analyzes the screen and sends the packets. 
+	 * Continues until stop() is called
+	 */
+	private void start()
+	{
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while(running)
+				{
+					update();
+					try {
+						Thread.sleep(50);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				sender.close();				
+			}
+		}).start();
+
+	}
+	
+	/**
+	 * Stops the program.
+	 */
+	private void stop()
+	{
+		running = false;
 	}
 	
 	
