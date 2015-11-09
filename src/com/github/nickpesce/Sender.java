@@ -20,7 +20,7 @@ public class Sender {
 		this.port = port;
 		 try
          {
-             socket = new DatagramSocket(port);
+             socket = new DatagramSocket();
              host = InetAddress.getByName(hostName);
          } catch (SocketException | UnknownHostException e)
          {
@@ -48,14 +48,6 @@ public class Sender {
             }
         }).start();
     }
-	
-	/**
-	 * Close the connection
-	 */
-	public void close()
-	{
-		socket.close();
-	}
 
 	/**
 	 * Converts and send an array of pixel arrays as a command string to the server.
@@ -70,5 +62,9 @@ public class Sender {
 		command.deleteCharAt(command.length()-1);
 		sendPacket(command.toString());
 				
+	}
+
+	public void sendOff() {
+		sendPacket("stop");
 	}
 }
