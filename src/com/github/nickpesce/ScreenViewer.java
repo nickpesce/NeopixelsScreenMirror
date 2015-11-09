@@ -19,6 +19,10 @@ public class ScreenViewer{
 		ScreenViewer sv = new ScreenViewer();
 	}
 	
+	/**
+	 * constructs and starts a new screenviewer. Continiously 
+	 * sends screen pixel data to a specified host.
+	 */
 	public ScreenViewer()
 	{
 		running = true;
@@ -41,6 +45,9 @@ public class ScreenViewer{
 		sender.close();
 	}
 	
+	/**
+	 * Get the screen pixel data, find averages, and send the data.
+	 */
 	public void update()
 	{
 		screen = r.createScreenCapture(screenRect);

@@ -9,7 +9,13 @@ import java.net.UnknownHostException;
 public class Sender {
 	private InetAddress host;
 	private int port;
-	DatagramSocket socket;
+	private DatagramSocket socket;
+	
+	/**
+	 * Constructs a Sender object. It opens a socket and allows sending of pixel data.
+	 * @param hostName The host name to open the socket to
+	 * @param port The port to send to.
+	 */
 	public Sender(String hostName, int port) {
 		this.port = port;
 		 try
@@ -22,6 +28,11 @@ public class Sender {
          }
 	}
 	
+	/**
+	 * Sends a packet with the specified text to the host:port defined in the constructor.
+	 * Packet is a UDP datagram
+	 * @param text The message to send
+	 */
 	private void sendPacket(final String text)
     {
         new Thread(new Runnable(){
@@ -38,11 +49,18 @@ public class Sender {
         }).start();
     }
 	
+	/**
+	 * Close the connection
+	 */
 	public void close()
 	{
 		socket.close();
 	}
 
+	/**
+	 * Converts and send an array of pixel arrays as a command string to the server.
+	 * @param leds The array of rgb arrays to send.
+	 */
 	public void sendPixels(int[][] leds) {
 		StringBuilder command = new StringBuilder("each -c ");
 		for(int[] led : leds)
