@@ -1,18 +1,34 @@
 package com.github.nickpesce;
 
 import java.awt.AWTException;
+import java.awt.BorderLayout;
 import java.awt.Rectangle;
 import java.awt.Robot;
+import java.awt.SystemTray;
 import java.awt.Toolkit;
+import java.awt.TrayIcon;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 
-public class ScreenViewer{
+import javax.imageio.ImageIO;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+
+public class ScreenViewer implements ActionListener, WindowListener{
 
 	private Robot r;
 	private Sender sender;
 	private boolean running;
 	private Rectangle screenRect;
 	private BufferedImage screen;
+	private TrayIcon icon;
+	private JFrame frame;
+	private JButton bStart, bStop, bExit;
+	private Thread thread;
 	
 	public static void main(String[] args)
 	{
@@ -34,6 +50,49 @@ public class ScreenViewer{
 		} catch (AWTException e) {
 			e.printStackTrace();
 		}
+		bStart = new JButton("Start");
+		bStart.addActionListener(this);
+		bStop = new JButton("Stop");
+		bStop.addActionListener(this);
+		bExit = new JButton("Exit");
+		bExit.addActionListener(this);
+		frame = new JFrame();
+		frame.getContentPane().add(bStart, BorderLayout.WEST);
+		frame.getContentPane().add(bStop, BorderLayout.CENTER);
+		frame.getContentPane().add(bExit, BorderLayout.EAST);
+		frame.pack();
+		frame.addWindowListener(this);
+		if(SystemTray.isSupported())
+		{
+			frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+			try {
+				String path;
+				if(SystemTray.getSystemTray().getTrayIconSize().getHeight()>16)
+					path="/NeopixelsTrayIcon32x32.png";
+				else
+					path = "/NeopixelsTrayIcon16x16.png";
+				BufferedImage image = ImageIO.read(getClass().getResourceAsStream(path));
+				icon = new TrayIcon(image);
+				icon.setToolTip("NeoMirror");
+				SystemTray.getSystemTray().add(icon);
+				icon.addActionListener(this);
+			} catch (AWTException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		else
+		{
+			frame.setVisible(true);
+			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		}
+		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+			@Override
+			public void run() {
+				stop();
+			}
+		}));
 	}
 	
 	/**
@@ -72,7 +131,8 @@ public class ScreenViewer{
 	 */
 	private void start()
 	{
-		new Thread(new Runnable() {
+		running = true;
+		thread = new Thread(new Runnable() {
 			@Override
 			public void run() {
 				while(running)
@@ -84,10 +144,9 @@ public class ScreenViewer{
 						e.printStackTrace();
 					}
 				}
-				sender.close();				
 			}
-		}).start();
-
+		});
+		thread.start();
 	}
 	
 	/**
@@ -96,6 +155,60 @@ public class ScreenViewer{
 	private void stop()
 	{
 		running = false;
+		try {
+			thread.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		sender.sendOff();
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent arg0) 
+	{
+		if(arg0.getSource().equals(icon))
+			frame.setVisible(!frame.isVisible());
+		else if(arg0.getSource().equals(bStart)){
+			if(!running){
+				start();
+			}
+		}
+		else if(arg0.getSource().equals(bStop)){
+			stop();
+		}else if(arg0.getSource().equals(bExit)){
+			stop();
+			System.exit(0);
+		}
+	}
+
+	@Override
+	public void windowActivated(WindowEvent arg0) {		
+	}
+
+	@Override
+	public void windowClosed(WindowEvent arg0) {		
+	}
+
+	@Override
+	public void windowClosing(WindowEvent arg0) {
+		frame.setVisible(false);
+		
+	}
+
+	@Override
+	public void windowDeactivated(WindowEvent arg0) {		
+	}
+
+	@Override
+	public void windowDeiconified(WindowEvent arg0) {		
+	}
+
+	@Override
+	public void windowIconified(WindowEvent arg0) {		
+	}
+
+	@Override
+	public void windowOpened(WindowEvent e) {		
 	}
 	
 	
