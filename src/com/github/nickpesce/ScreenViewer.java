@@ -12,6 +12,10 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
@@ -20,6 +24,7 @@ import javax.swing.JFrame;
 
 public class ScreenViewer implements ActionListener, WindowListener{
 
+	public static final int NUM_LEDS = 60;
 	private Robot r;
 	private Sender sender;
 	private boolean running;
@@ -29,8 +34,11 @@ public class ScreenViewer implements ActionListener, WindowListener{
 	private JFrame frame;
 	private JButton bStart, bStop, bExit;
 	private Thread thread;
+	private String hostname;
+	private int port;
 	
-	public static void main(String[] args)
+	
+	public static void main(String[] args) throws IOException
 	{
 		ScreenViewer sv = new ScreenViewer();
 		sv.start();
@@ -39,11 +47,13 @@ public class ScreenViewer implements ActionListener, WindowListener{
 	/**
 	 * constructs and starts a new screenviewer. Continiously 
 	 * sends screen pixel data to a specified host.
+	 * @throws IOException 
 	 */
-	public ScreenViewer()
+	public ScreenViewer() throws IOException
 	{
 		running = true;
-		sender = new Sender("nickspi.student.umd.edu", 42297);
+		readConfig();
+		sender = new Sender(hostname, port);
 		screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 		try {
 			r = new Robot();
@@ -91,32 +101,72 @@ public class ScreenViewer implements ActionListener, WindowListener{
 			@Override
 			public void run() {
 				stop();
+                sender.close();
 			}
 		}));
 	}
 	
 	/**
+	 * Reads hostname, port, and password from the config file. makes config if needed.
+	 * @throws IOException
+	 */
+	private void readConfig() throws IOException
+	{
+		File file = new File("config.txt");
+		if(!file.exists())
+		{
+			createConfig(file);
+		}
+		BufferedReader reader = new BufferedReader(new FileReader(file));
+		String line;
+		while((line = reader.readLine()) != null)
+		{
+			//Does not support ipv6 and some urls
+			String[] parts = line.split(" ");
+			if(parts[0].equals("hostname"))
+				hostname = parts[1].trim();
+			else if(parts[0].equals("port"))
+				port = Integer.parseInt(parts[1].trim());
+		}
+		reader.close();
+	}
+	
+	private void createConfig(File file) throws IOException 
+	{
+		file.createNewFile();
+		FileWriter writer = new FileWriter(file);
+		writer.write("hostname MY.HOST.NAME\n");
+		writer.write("port 12345\n");
+		writer.close();
+	}
+
+	/**
 	 * Get the screen pixel data, find averages, and send the data.
 	 */
 	public void update()
 	{
-		screen = r.createScreenCapture(screenRect);
-		int[][] leds = new int[60][3];
+		//screen = r.createScreenCapture(screenRect);
+		byte[] leds = new byte[NUM_LEDS * 3];
 		int[] pixel;
 		int redBucket = 0;
 		int greenBucket = 0;
 		int blueBucket = 0;
 		int pixelsInBucket = 0;
-		double colWidth = screen.getWidth()/60.0;
+		double colWidth = ((double)screenRect.getWidth())/NUM_LEDS;
 		for (int x = 0; x < 60; x++) {
-		    for (int y = 0; y < screen.getHeight(); y++) {
-		        pixel = screen.getRaster().getPixel((int)(x*colWidth), y, new int[3]);
+			screen = r.createScreenCapture(new Rectangle((int)(x*colWidth), 0, 1, (int)screenRect.getHeight()));
+		    for (int y = 0; y < screenRect.getHeight(); y++) {
+		        //pixel = screen.getRaster().getPixel((int)(x*colWidth), y, new int[3]);
+		        pixel = screen.getRaster().getPixel(0, y, new int[3]);
+
 		        redBucket += pixel[0];
 		        greenBucket += pixel[1];
 		        blueBucket += pixel[2];
 		        pixelsInBucket++;
 		    }
-		    leds[x] = new int[]{redBucket/pixelsInBucket, greenBucket/pixelsInBucket, blueBucket/pixelsInBucket};
+		    leds[3*x] = (byte)(redBucket/pixelsInBucket);
+		    leds[3*x + 1] = (byte)(greenBucket/pixelsInBucket);
+		    leds[3*x + 2] = (byte)(blueBucket/pixelsInBucket);
 		    pixelsInBucket = 0;
 		    redBucket = 0;
 		    blueBucket = 0;
@@ -135,14 +185,17 @@ public class ScreenViewer implements ActionListener, WindowListener{
 		thread = new Thread(new Runnable() {
 			@Override
 			public void run() {
+				long time = System.currentTimeMillis();
 				while(running)
 				{
 					update();
-					try {
-						Thread.sleep(50);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+					System.out.println(System.currentTimeMillis() - time);
+					time = System.currentTimeMillis();
+//					try {
+//						Thread.sleep(50);
+//					} catch (InterruptedException e) {
+//						e.printStackTrace();
+//					}
 				}
 			}
 		});
